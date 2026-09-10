@@ -44,6 +44,19 @@ class RulePage extends HookConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            const Card(
+              margin: EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'How matching works: an empty field means Any (no restriction). '
+                  'Values in one field are alternatives; populated fields must all match.\n\n'
+                  'Firefox example: choose Direct, add firefox.exe under Process names, '
+                  'leave the other match fields empty, and keep Network set to All. '
+                  'Saving the rule reconnects the VPN automatically.',
+                ),
+              ),
+            ),
             SettingText(
               title: RuleEnum.name.present(t),
               value: ref.watch(ruleNotifierProvider(ruleListOrder).select((value) => value.name)),

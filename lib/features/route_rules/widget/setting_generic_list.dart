@@ -53,7 +53,9 @@ class SettingGenericList<T extends Object> extends ConsumerWidget {
                       ],
                     )
                   : Text(title),
-              trailing: Text('${values.length}'),
+              // An empty matcher does not constrain this rule. Showing "Any"
+              // makes that behavior explicit instead of displaying an opaque 0.
+              trailing: Text(values.isEmpty ? 'Any' : '${values.length}'),
             ),
             if (values.isNotEmpty)
               SettingDetailChips<T>(values: values, useEllipsis: useEllipsis, isPackageName: isPackageName),

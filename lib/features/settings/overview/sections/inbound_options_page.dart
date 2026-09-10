@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/features/settings/data/config_option_repository.dart';
 import 'package:hiddify/features/settings/widget/lan_sharing_tile.dart';
@@ -25,6 +26,13 @@ class InboundOptionsPage extends HookConsumerWidget with AppLogger {
             icon: Icons.tune_rounded,
             presentChoice: (value) => value.present(t),
           ),
+          if (PlatformUtils.isDesktop && ref.watch(ConfigOptions.serviceMode) == ServiceMode.tun)
+            ListTile(
+              leading: const Icon(Icons.app_blocking_rounded),
+              title: const Text('VPN app exclusions'),
+              subtitle: const Text('Choose running applications that should bypass the VPN.'),
+              onTap: () => context.goNamed('desktopAppExclusions'),
+            ),
           SwitchListTile.adaptive(
             title: Text(t.pages.settings.inbound.strictRoute),
             secondary: const Icon(Icons.merge_rounded),

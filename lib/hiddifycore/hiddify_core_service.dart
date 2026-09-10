@@ -29,6 +29,85 @@ import 'package:loggy/loggy.dart' as loggyl;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rxdart/rxdart.dart';
 
+// The Flutter settings model stores route rules in a nested protobuf JSON
+// object. Core's HiddifyOptions parser uses Go JSON tags and numeric protobuf
+// enum values, so normalize this payload at the RPC boundary before sending it.
+Map<String, dynamic> _settingsJsonForCore(SingboxConfigOption options) {
+  final settingsJson = Map<String, dynamic>.from(options.toJson());
+  final routeRule = settingsJson.remove('route-rule');
+  if (routeRule is Map) {
+    // Core v4.1 expects user rules at the top-level `rules` field.
+    settingsJson['rules'] = _coreRouteRules(routeRule['rules']);
+  }
+  return settingsJson;
+}
+
+List<Map<String, dynamic>> _coreRouteRules(dynamic value) {
+  if (value is! List) return const [];
+  return value.whereType<Map>().map(_coreRouteRule).toList();
+}
+
+Map<String, dynamic> _coreRouteRule(Map rule) {
+  final result = <String, dynamic>{};
+
+  // Protobuf JSON uses lowerCamelCase; Core expects the snake_case names in
+  // v2/config/route_rule.pb.go. Supporting both forms also keeps imports from
+  // older app versions readable.
+  void copy(String coreKey, List<String> jsonKeys) {
+    for (final jsonKey in jsonKeys) {
+      if (rule.containsKey(jsonKey)) {
+        result[coreKey] = rule[jsonKey];
+        return;
+      }
+    }
+  }
+
+  copy('list_order', ['listOrder', 'list_order']);
+  copy('enabled', ['enabled']);
+  copy('name', ['name']);
+  copy('rule_sets', ['ruleSets', 'rule_sets', 'ruleSet', 'rule_set']);
+  copy('package_names', ['packageNames', 'package_names', 'packageName', 'package_name']);
+  copy('process_names', ['processNames', 'process_names', 'processName', 'process_name']);
+  copy('process_paths', ['processPaths', 'process_paths', 'processPath', 'process_path']);
+  copy('port_ranges', ['portRanges', 'port_ranges', 'portRange', 'port_range']);
+  copy('source_port_ranges', ['sourcePortRanges', 'source_port_ranges', 'sourcePortRange', 'source_port_range']);
+  copy('ip_cidrs', ['ipCidrs', 'ip_cidrs', 'ipCidr', 'ip_cidr']);
+  copy('source_ip_cidrs', ['sourceIpCidrs', 'source_ip_cidrs', 'sourceIpCidr', 'source_ip_cidr']);
+  copy('domains', ['domains', 'domain']);
+  copy('domain_suffixes', ['domainSuffixes', 'domain_suffixes', 'domainSuffix', 'domain_suffix']);
+  copy('domain_keywords', ['domainKeywords', 'domain_keywords', 'domainKeyword', 'domain_keyword']);
+  copy('domain_regexes', ['domainRegexes', 'domain_regexes', 'domainRegex', 'domain_regex']);
+
+  // Go's encoding/json cannot decode protobuf enum names into enum integers.
+  if (rule.containsKey('outbound')) {
+    result['outbound'] = _enumNumber(rule['outbound'], const {
+      'proxy': 0,
+      'direct': 1,
+      'direct_with_fragment': 2,
+      'directWithFragment': 2,
+      'block': 3,
+    });
+  }
+  if (rule.containsKey('network')) {
+    result['network'] = _enumNumber(rule['network'], const {'all': 0, 'tcp': 1, 'udp': 2});
+  }
+  final protocols = rule['protocols'] ?? rule['protocol'];
+  if (protocols is List) {
+    result['protocols'] = protocols
+        .map(
+          (value) => _enumNumber(value, const {'tls': 0, 'http': 1, 'quic': 2, 'stun': 3, 'dns': 4, 'bittorrent': 5}),
+        )
+        .toList();
+  }
+  return result;
+}
+
+dynamic _enumNumber(dynamic value, Map<String, int> names) {
+  if (value is num) return value;
+  if (value is String) return names[value] ?? int.tryParse(value) ?? value;
+  return value;
+}
+
 class HiddifyCoreService with InfraLogger {
   HiddifyCoreService(this.ref);
   final Ref ref;
@@ -117,12 +196,13 @@ class HiddifyCoreService with InfraLogger {
       loggy.debug("changing options");
       // latestOptions = options;
       try {
+        final settingsJson = _settingsJsonForCore(options);
         final res = await core.fgClient.changeHiddifySettings(
-          ChangeHiddifySettingsRequest(hiddifySettingsJson: jsonEncode(options.toJson())),
+          ChangeHiddifySettingsRequest(hiddifySettingsJson: jsonEncode(settingsJson)),
         );
         if (res.messageType != MessageType.EMPTY) return left("${res.messageType} ${res.message}");
         await core.bgClient.changeHiddifySettings(
-          ChangeHiddifySettingsRequest(hiddifySettingsJson: jsonEncode(options.toJson())),
+          ChangeHiddifySettingsRequest(hiddifySettingsJson: jsonEncode(settingsJson)),
         );
       } on GrpcError catch (e) {
         if (e.code == StatusCode.unavailable) {
@@ -158,41 +238,45 @@ class HiddifyCoreService with InfraLogger {
       // }
       // final content = await File(path).readAsString();
       // loggy.debug("starting with content: $content");
+      final request = StartRequest(
+        configPath: path,
+        configName: name,
+        // configContent: content,
+        disableMemoryLimit: disableMemoryLimit,
+      );
+      late CoreInfoResponse res;
       try {
-        final res = await core.bgClient.start(
-          StartRequest(
-            configPath: path,
-            configName: name,
-            // configContent: content,
-            disableMemoryLimit: disableMemoryLimit,
-          ),
+        res = await core.bgClient.start(request);
+      } on GrpcError catch (firstError) {
+        // On Windows the in-process Core can finish starting while the first
+        // gRPC response is lost as its network interfaces are reconfigured.
+        // Retrying is safe: Core returns ALREADY_STARTED when that happened.
+        loggy.warning("first background core start RPC failed; retrying", firstError);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        try {
+          res = await core.bgClient.start(request);
+        } on GrpcError catch (retryError) {
+          loggy.error("background core start RPC failed twice", retryError);
+          ref.read(coreRestartSignalProvider.notifier).restart();
+          final detail = "${retryError.codeName}: ${retryError.message ?? retryError.toString()}";
+          return left(ConnectionFailure.unexpected("failed to start background core ($detail)"));
+        }
+      }
+
+      ref.read(coreRestartSignalProvider.notifier).restart();
+      if (res.messageType != MessageType.ALREADY_STARTED && res.messageType != MessageType.EMPTY) {
+        final alert = res.message.contains("denied") ? CoreAlert.requestVPNPermission : CoreAlert.startFailed;
+        currentState = CoreStatus.stopped(
+          alert: alert,
+          message: "failed to start core ${res.messageType} ${res.message}",
         );
-        ref.read(coreRestartSignalProvider.notifier).restart();
-        if (res.messageType != MessageType.ALREADY_STARTED && res.messageType != MessageType.EMPTY) {
-          final alert = res.message.contains("denied") ? CoreAlert.requestVPNPermission : CoreAlert.startFailed;
-          currentState = CoreStatus.stopped(
-            alert: alert,
-            message: "failed to start core ${res.messageType} ${res.message}",
-          );
 
-          statusController.add(currentState);
+        statusController.add(currentState);
 
-          return left(
-            currentState.getCoreAlert() ??
-                ConnectionFailure.unexpected("failed to start core ${res.messageType} ${res.message}"),
-          );
-        }
-      } on GrpcError catch (e) {
-        loggy.error("failed to start bg core: $e");
-        ref.read(coreRestartSignalProvider.notifier).restart();
-        if (e.code == StatusCode.unavailable) {
-          return left(const ConnectionFailure.unexpected("background core is not started yet!"));
-        }
-        // throw InvalidConfig(e.message);
-        // throw DioException.connectionError(requestOptions: RequestOptions(), reason: e.codeName, error: e);
-
-        // throw DioException(requestOptions: RequestOptions(), error: e);
-        return left(const ConnectionFailure.unexpected("failed to start background core"));
+        return left(
+          currentState.getCoreAlert() ??
+              ConnectionFailure.unexpected("failed to start core ${res.messageType} ${res.message}"),
+        );
       }
 
       // if (res.messageType != MessageType.EMPTY) return left(res);

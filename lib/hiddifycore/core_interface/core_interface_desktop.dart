@@ -106,7 +106,9 @@ class CoreInterfaceDesktop extends CoreInterface with InfraLogger {
     }
     bgClient = fgClient = CoreClient(
       ClientChannel(
-        'localhost',
+        // setup() binds Core specifically to IPv4. Using the same literal
+        // avoids `localhost` resolving to ::1 while the service is starting.
+        '127.0.0.1',
         port: port,
         options: const ChannelOptions(
           credentials: ChannelCredentials.insecure(),

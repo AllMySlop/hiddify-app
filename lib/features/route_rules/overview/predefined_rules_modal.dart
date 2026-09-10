@@ -71,7 +71,10 @@ class PredefinedRulesModal extends HookConsumerWidget {
         enabled: true,
         name: t.pages.settings.routing.predefinedRules.ads.name,
         outbound: Outbound.direct,
-        ruleSets: ["geosite-category-ads-all"],
+        // Core recognizes this URL and declares it as a remote rule set when
+        // it builds the configuration. A raw symbolic tag would be
+        // referenced without a declaration and prevent the service starting.
+        ruleSets: ["https://raw.githubusercontent.com/hiddify/hiddify-geo/rule-set/block/geosite-category-ads-all.srs"],
       ),
     ),
     (

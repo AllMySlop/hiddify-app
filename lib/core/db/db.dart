@@ -63,7 +63,16 @@ class Db extends _$Db with InfraLogger {
           await m.createTable(schema.appProxyEntries);
         },
         from5To6: (m, schema) async {
-          await m.dropColumn(schema.profileEntries, 'profile_override');
+          // Some pre-release v5 databases were already created without this
+          // column. Keep the migration idempotent so those installations can
+          // still advance to v6 instead of failing during app startup.
+          final profileOverrideExists = await _columnExists(
+            schema.profileEntries.actualTableName,
+            'profile_override',
+          );
+          if (profileOverrideExists) {
+            await m.dropColumn(schema.profileEntries, 'profile_override');
+          }
         },
       ),
     );

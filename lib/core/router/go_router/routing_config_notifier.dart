@@ -13,6 +13,7 @@ import 'package:hiddify/features/home/widget/home_page.dart';
 import 'package:hiddify/features/intro/widget/intro_page.dart';
 import 'package:hiddify/features/log/overview/logs_page.dart';
 import 'package:hiddify/features/per_app_proxy/overview/per_app_proxy_page.dart';
+import 'package:hiddify/features/desktop_app_exclusions/overview/desktop_app_exclusions_page.dart';
 import 'package:hiddify/features/profile/details/profile_details_page.dart';
 import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
 import 'package:hiddify/features/profile/overview/profiles_page.dart';
@@ -241,6 +242,15 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
                           path: 'per-app-proxy',
                           pageBuilder: (_, state) =>
                               customTransition(TransitionType.slide, state.pageKey, const PerAppProxyPage()),
+                        ),
+                        GoRoute(
+                          name: 'desktopAppExclusions',
+                          path: 'desktop-app-exclusions',
+                          pageBuilder: (_, state) => customTransition(
+                            TransitionType.slide,
+                            state.pageKey,
+                            const DesktopAppExclusionsPage(),
+                          ),
                         ),
                       ],
                     ),

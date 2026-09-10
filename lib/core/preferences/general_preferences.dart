@@ -53,6 +53,13 @@ abstract class Preferences {
     <String>[],
   );
 
+  /// Absolute executable paths excluded from the desktop VPN/TUN route.
+  /// This is separate from Android's package-name per-app proxy preference.
+  static final desktopExcludeApps = PreferencesNotifier.create<List<String>, List<String>>(
+    "desktop_vpn_exclude_paths",
+    <String>[],
+  );
+
   static final windowMaximized = PreferencesNotifier.create<bool, bool>("window_maximized", false);
 
   static final windowPosition = PreferencesNotifier.create<Offset?, String?>(

@@ -5,6 +5,7 @@ import 'package:hiddify/core/model/region.dart';
 import 'package:hiddify/core/utils/exception_handler.dart';
 import 'package:hiddify/core/utils/json_converters.dart';
 import 'package:hiddify/core/utils/preferences_utils.dart';
+import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/features/log/model/log_level.dart';
 import 'package:hiddify/features/profile/data/profile_parser.dart';
 import 'package:hiddify/features/route_rules/notifier/rules_notifier.dart';
@@ -544,7 +545,30 @@ abstract class ConfigOptions {
         ),
         profile: SingboxUnblockerProfileOption(id: ref.watch(unblockerProfileId)),
       ),
-      routeRule: RouteRule(rules: ref.watch(rulesNotifierProvider)).toProto3Json()! as Map<String, dynamic>,
+      // Hiddify Core evaluates this generated rule before user-authored rules.
+      // It matches process_path and sends matching traffic directly, bypassing
+      // the proxy/VPN outbound. Because the paths are part of the core config,
+      // a later process launch is matched without a new UI refresh or hash
+      // lookup in Flutter.
+      routeRule:
+          RouteRule(
+                rules: [
+                  if (PlatformUtils.isDesktop &&
+                      mode == ServiceMode.tun &&
+                      ref.watch(Preferences.desktopExcludeApps).isNotEmpty)
+                    Rule(
+                      // A negative order keeps this synthetic rule ahead of saved rules.
+                      listOrder: -1,
+                      enabled: true,
+                      name: 'Desktop app exclusions',
+                      outbound: Outbound.direct,
+                      network: Network.all,
+                      processPaths: ref.watch(Preferences.desktopExcludeApps),
+                    ),
+                  ...ref.watch(rulesNotifierProvider),
+                ],
+              ).toProto3Json()!
+              as Map<String, dynamic>,
     );
   });
 }
