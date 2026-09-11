@@ -557,8 +557,9 @@ abstract class ConfigOptions {
                       mode == ServiceMode.tun &&
                       ref.watch(Preferences.desktopExcludeApps).isNotEmpty)
                     Rule(
-                      // A negative order keeps this synthetic rule ahead of saved rules.
-                      listOrder: -1,
+                      // This synthetic rule is prepended, so order zero keeps it first
+                      // while remaining valid for the protobuf's unsigned field.
+                      listOrder: 0,
                       enabled: true,
                       name: 'Desktop app exclusions',
                       outbound: Outbound.direct,
