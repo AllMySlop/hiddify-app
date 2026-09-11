@@ -53,6 +53,10 @@ CORE_NAME=hiddify-lib
 LIB_NAME=hiddify-core
 CORE_REPO ?= AllMySlop/hiddify-core
 
+# Local builds use the pinned fork release by default. CI can explicitly set
+# CHANNEL=dev when it needs the fork's draft artifacts.
+CHANNEL ?= prod
+
 ifeq ($(CHANNEL),prod)
 	CORE_URL=https://github.com/$(CORE_REPO)/releases/download/v$(core.version)
 else
