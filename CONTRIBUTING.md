@@ -29,7 +29,7 @@ When contributing a complex change to the Hiddify repository, please discuss the
 ## Development
 
 ### Adding Feature / Fix bug in Core:
-Please follow our [Go Core Development repository](https://github.com/hiddify/hiddify-next-core/main/CONTRIBUTING.m).
+Please follow our [Go Core Development repository](https://github.com/AllMySlop/hiddify-core/blob/v3/CONTRIBUTING.md).
 
 ### Working with the Flutter Code
 Hiddify uses [Flutter](https://flutter.dev), make sure that you have the correct version installed before starting development. You can use the following commands to check your installed version:
@@ -50,7 +50,7 @@ We recommend using [Visual Studio Code](https://docs.flutter.dev/development/too
 #### Setting up the Environment
 
 We have extensive use of code generation in the form of [freezed](https://github.com/rrousselGit/freezed), [riverpod](https://github.com/rrousselGit/riverpod), etc. So it's generate these before running the code. Execute the following make commands in order:
-Assuming you have not built the `hiddify-core` and want to use [existing releases](https://github.com/hiddify/hiddify-next-core/releases), you should run the following command (based on your target platform):
+Assuming you have not built the sibling `hiddify-core` repository and want to use [existing releases](https://github.com/AllMySlop/hiddify-core/releases), you should run the following command (based on your target platform):
 
 
 - `make windows-prepare`

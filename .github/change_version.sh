@@ -2,7 +2,7 @@
 SED() { [[ "$OSTYPE" == "darwin"* ]] && sed -i '' "$@" || sed -i "$@"; }
 echo "previous version was $(git describe --tags $(git rev-list --tags --max-count=1))"
 echo "WARNING: This operation will creates version tag and push to github"
-if [ "$(curl -o /dev/null -I -s -w "%{http_code}" https://github.com/hiddify/hiddify-core/releases/download/v${CORE_VERSION}/hiddify-core-linux-amd64.tar.gz)" = "404" ]; then 
+if [ "$(curl -o /dev/null -I -s -w "%{http_code}" https://github.com/AllMySlop/hiddify-core/releases/download/v${CORE_VERSION}/hiddify-core-linux-amd64.tar.gz)" = "404" ]; then 
     echo "Core v${CORE_VERSION} not Found"; 
     exit 3; 
 fi
@@ -30,7 +30,7 @@ git tag ${TAG} > /dev/null
 
 gitchangelog > HISTORY.md || { git tag -d ${TAG}; echo "Please run pip install gitchangelog pystache mustache markdown"; exit 2; } 
 git tag -d ${TAG} > /dev/null 
-git add hiddify-core dependencies.properties ios/Runner.xcodeproj/project.pbxproj pubspec.yaml windows/packaging/msix/make_config.yaml HISTORY.md 
+git add dependencies.properties ios/Runner.xcodeproj/project.pbxproj pubspec.yaml windows/packaging/msix/make_config.yaml HISTORY.md 
 git commit -m "release: version ${TAG}" 
 echo "creating git tag : v${TAG}" 
 git push 

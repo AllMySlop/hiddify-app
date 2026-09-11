@@ -72,6 +72,5 @@ windows/sign.cer
 .aider.chat.history.md
 .aider.tags.cache.v4
 
-# Local build tools and temporary dependency checkouts used by Codex.
+# Local build tools used by Codex.
 /.tools/
-/.tmp-hiddify-core-v4.1.0/

@@ -32,7 +32,7 @@ or
 
 # For cli or router or relay server:
 download hiddify core from:
-https://github.com/hiddify/hiddify-core/releases/
+https://github.com/AllMySlop/hiddify-core/releases/
 
 then you can run dnstt in router or relay server via
 

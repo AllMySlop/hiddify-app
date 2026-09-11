@@ -187,7 +187,7 @@ ffigen:
   output: "lib/gen/hiddify_core_generated_bindings.dart"
   headers:
     entry-points:
-      - "hiddify-core/bin/desktop.h"
+      - "../hiddify-core/bin/desktop.h"
 
 sentry:
   upload_debug_symbols: true

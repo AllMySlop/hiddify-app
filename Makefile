@@ -39,20 +39,24 @@ else
 endif
 
 
-BINDIR=hiddify-core$(SEP)bin
 ANDROID_OUT=android$(SEP)app$(SEP)libs
 IOS_OUT=ios$(SEP)Frameworks
-DESKTOP_OUT=hiddify-core$(SEP)bin
 GEO_ASSETS_DIR=assets$(SEP)core
+
+# The app and core are maintained as sibling repositories.
+CORE_DIR ?= ..$(SEP)hiddify-core
+BINDIR=$(CORE_DIR)$(SEP)bin
+DESKTOP_OUT=$(CORE_DIR)$(SEP)bin
 
 CORE_PRODUCT_NAME=hiddify-core
 CORE_NAME=hiddify-lib
 LIB_NAME=hiddify-core
+CORE_REPO ?= AllMySlop/hiddify-core
 
 ifeq ($(CHANNEL),prod)
-	CORE_URL=https://github.com/hiddify/hiddify-core/releases/download/v$(core.version)
+	CORE_URL=https://github.com/$(CORE_REPO)/releases/download/v$(core.version)
 else
-	CORE_URL=https://github.com/hiddify/hiddify-core/releases/download/draft
+	CORE_URL=https://github.com/$(CORE_REPO)/releases/download/draft
 endif
 
 ifeq ($(CHANNEL),prod)
@@ -113,15 +117,15 @@ android-aab-prepare:android-prepare
 generate_kotlin_protos: 
 	# Run protoc to generate Kotlin files
 	# protoc \
-	# 	--proto_path=hiddify-core/ \
+	# 	--proto_path=$(CORE_DIR)/ \
 	# 	--java_out=./android/app/src/main/java/ \
 	# 	--grpc-java_out=./android/app/src/main/java/ \
-	# 	$(shell find hiddify-core/v2 hiddify-core/extension -name "*.proto")
+	# 	$(shell find $(CORE_DIR)/v2 $(CORE_DIR)/extension -name "*.proto")
 	rsync -av --delete \
 		--include='*/' \
 		--include='*.proto' \
 		--exclude='*' \
-		hiddify-core/v2 hiddify-core/extension ./android/app/src/main/protos/
+		$(CORE_DIR)$(SEP)v2 $(CORE_DIR)$(SEP)extension ./android/app/src/main/protos/
 	# # Find .proto files and update package declarations
 	# find "./android/app/src/main/java/com/hiddify/hiddify/protos" -type f -name "*.java" | while read -r proto_file; do \
 	#     if grep -q "^package " "$$proto_file"; then \
@@ -130,11 +134,11 @@ generate_kotlin_protos:
 	# done
 
 generate_go_protoc:
-	make -C hiddify-core -f Makefile protos
+	make -C $(CORE_DIR) -f Makefile protos
 	echo "SED: $(SED)"
 generate_dart_protoc:
 	mkdir -p lib/hiddifycore/generated
-	protoc --dart_out=grpc:lib/hiddifycore/generated --proto_path=hiddify-core/  $(shell find hiddify-core/v2 hiddify-core/extension -name "*.proto") 	google/protobuf/timestamp.proto ; \
+	protoc --dart_out=grpc:lib/hiddifycore/generated --proto_path=$(CORE_DIR)$(SEP)  $(shell find $(CORE_DIR)$(SEP)v2 $(CORE_DIR)$(SEP)extension -name "*.proto") 	google/protobuf/timestamp.proto ; \
 
 .PHONY: protos
 protos: generate_go_protoc generate_kotlin_protos generate_dart_protoc
@@ -509,24 +513,24 @@ get-geo-assets:
 	# curl -L https://github.com/SagerNet/sing-geosite/releases/latest/download/geosite.db -o $(GEO_ASSETS_DIR)/geosite.db
 
 build-headers:
-	make -C hiddify-core -f Makefile headers && mv $(BINDIR)/$(CORE_NAME)-headers.h $(BINDIR)/hiddify-core.h
+	make -C $(CORE_DIR) -f Makefile headers && mv $(BINDIR)/$(CORE_NAME)-headers.h $(BINDIR)/hiddify-core.h
 
 build-android-libs:
-	make -C hiddify-core -f Makefile android 
+	make -C $(CORE_DIR) -f Makefile android 
 	mv $(BINDIR)/$(LIB_NAME).aar $(ANDROID_OUT)/
 
 build-windows-libs:
-	make -C hiddify-core -f Makefile windows-amd64
+	make -C $(CORE_DIR) -f Makefile windows-amd64
 
 build-linux-libs:
-	make -C hiddify-core -f Makefile linux-amd64 
+	make -C $(CORE_DIR) -f Makefile linux-amd64 
 
 build-macos-libs:
-	make -C hiddify-core -f Makefile macos
+	make -C $(CORE_DIR) -f Makefile macos
 
 build-ios-libs: 
 	rm -rf $(IOS_OUT)/HiddifyCore.xcframework 
-	make -C hiddify-core -f Makefile ios  
+	make -C $(CORE_DIR) -f Makefile ios  
 	mv $(BINDIR)/HiddifyCore.xcframework $(IOS_OUT)/HiddifyCore.xcframework
 
 release: # Create a new tag for release.
