@@ -11,7 +11,10 @@ class PreferencesMigration with InfraLogger {
   Future<void> migrate() async {
     final currentVersion = sharedPreferences.getInt(versionKey) ?? 0;
 
-    final migrationSteps = [PreferencesVersion1Migration(sharedPreferences)];
+    final List<PreferencesMigrationStep> migrationSteps = [
+      PreferencesVersion1Migration(sharedPreferences),
+      PreferencesVersion2Migration(sharedPreferences),
+    ];
 
     if (currentVersion == migrationSteps.length) {
       loggy.debug("already using the latest version (v$currentVersion)");
@@ -106,4 +109,20 @@ class PreferencesVersion1Migration extends PreferencesMigrationStep with InfraLo
     "ipv6Only" => "ipv6_only",
     _ => "",
   };
+}
+
+class PreferencesVersion2Migration extends PreferencesMigrationStep with InfraLogger {
+  PreferencesVersion2Migration(super.sharedPreferences);
+
+  @override
+  Future<void> migrate() async {
+    // 9000 was the previous application default. It is unsafe on common
+    // Linux paths (and especially when another VPN or overlay lowers the
+    // effective MTU), so migrate the untouched default for existing installs.
+    // Explicitly selected values other than 9000 remain unchanged.
+    if (sharedPreferences.getInt("mtu") case final int mtu when mtu == 9000) {
+      loggy.debug("changing [mtu] from the unsafe default [9000] to [1500]");
+      await sharedPreferences.setInt("mtu", 1500);
+    }
+  }
 }

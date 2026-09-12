@@ -138,7 +138,10 @@ abstract class ConfigOptions {
     mapTo: (value) => value.name,
   );
 
-  static final mtu = PreferencesNotifier.create<int, int>("mtu", 9000);
+  // 1500 is the broadly safe default for Linux hosts. A larger TUN MTU can
+  // exceed the effective path MTU when the host is behind another VPN,
+  // overlay, or wireless link, which causes otherwise opaque TLS failures.
+  static final mtu = PreferencesNotifier.create<int, int>("mtu", 1500);
 
   static final strictRoute = PreferencesNotifier.create<bool, bool>("strict-route", true);
 
